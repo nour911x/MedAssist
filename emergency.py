@@ -1,29 +1,22 @@
-from datetime import datetime
+#Cette fonctionnalite permet au patient de generer un message pret a envoyer a un proche.
+EMERGENCY_NUMBER = "15"
 
-EMERGENCY_NUMBER = "15"  # SAMU
 
+def generate_emergency_message(result, contact="Proche", location=""):
+    symptoms = " et ".join(result["symptoms"])
 
-def generate_emergency_message(analysis, contact_name="Contact d'urgence", location=""):
-    risk_labels = {"low": "FAIBLE", "medium": "MODERE", "high": "ELEVE"}
-    symptoms_list = ", ".join(analysis["symptoms"])
-    risk = risk_labels.get(analysis["risk_level"], "INCONNU")
+    if result["risk_level"] == "high":
+        message = f"Bonjour {contact}, j'ai besoin d'aide, j'ai {symptoms}. Tu peux venir vite ?"
+        if location:
+            message += f" Je suis a {location}."
+        message += f" Si tu n'arrives pas, appelle le {EMERGENCY_NUMBER}."
 
-    message = (
-        f"ALERTE SANTE\n\n"
-        f"Bonjour {contact_name},\n\n"
-        f"Je ne me sens pas bien et j'ai besoin d'aide.\n\n"
-        f"Symptomes : {symptoms_list}\n"
-        f"Niveau de risque estime : {risk}\n"
-        f"Specialite conseillee : {analysis['specialty']}\n"
-        f"Date : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-    )
+    elif result["risk_level"] == "medium":
+        message = f"Bonjour {contact}, je ne me sens pas bien, j'ai {symptoms}. Tu peux passer me voir ?"
+        if location:
+            message += f" Je suis a {location}."
 
-    if location:
-        message += f"Localisation : {location}\n"
-
-    message += (
-        f"\nMerci de m'aider ou d'appeler le {EMERGENCY_NUMBER} si necessaire.\n\n"
-        f"Ce message a ete genere par MedAssist (outil d'aide, pas un diagnostic medical)."
-    )
+    else:
+        message = f"Bonjour {contact}, je voulais te prevenir, j'ai {symptoms}. Rien de grave mais je prefere que tu sois au courant."
 
     return message

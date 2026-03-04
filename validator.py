@@ -1,56 +1,62 @@
 import json
-import re
-
+# les mots critiques
 CRITICAL_KEYWORDS = [
-    "douleur thoracique", "poitrine", "chest pain",
-    "difficulte a respirer", "essoufflement", "suffocation",
-    "perte de conscience", "evanouissement",
-    "saignement abondant", "hemorragie",
-    "paralysie", "avc", "stroke",
-    "convulsions",
-    "overdose", "intoxication",
-    "suicide", "se tuer",
+    "douleur thoracique",
+    "difficulte a respirer",
+    "perte de connaissance",
+    "saignement abondant",
+    "paralysie"
 ]
 
-VALID_RISK_LEVELS = ["low", "medium", "high"]
-CONFIDENCE_THRESHOLD = 0.4
+# les combinaisons critiques (inspirees des protocoles de triage medical)
+CRITICAL_COMBOS = [
+    (["douleur thoracique", "essoufflement"], "Suspicion syndrome coronarien"),
+    (["paralysie", "mal de tete"], "Suspicion AVC"),
+    (["fievre", "confusion"], "Suspicion meningite"),
+    (["douleur thoracique", "palpitations"], "Suspicion cardiaque"),
+]
 
+VALID_RISKS = ["low", "medium", "high"]
 
-def validate_response(raw_response, original_symptoms):
-    # Parse JSON
+#La fonction validate_response()
+def validate_response(raw_json, original_text):
     try:
-        json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
-        if not json_match:
-            return None, "Format JSON invalide"
-        data = json.loads(json_match.group())
-    except json.JSONDecodeError:
-        return None, "Erreur de parsing JSON"
+        data = json.loads(raw_json) #On essaie de parser le JSON
+    except:
+        return None, "Erreur JSON" #Si json.loads echoue, on attrape l'exception et on retourne une erreur propre 
 
-    # Champs requis
-    for field in ["symptoms", "risk_level", "confidence", "explanation", "specialty"]:
+    # Verification champs obligatoires
+    required = ["symptoms", "risk_level", "confidence", "explanation", "specialty"]
+    for field in required:
         if field not in data:
-            return None, f"Champ manquant : {field}"
+            return None, f"Champ manquant: {field}"
+    #On verifie que risk_level est bien "low", "medium" ou "high". 
+    if data["risk_level"] not in VALID_RISKS:
+        return None, "Niveau de risque invalide"
+    #On passe le texte du patient en minuscules . Comme ca, "Douleur Thoracique" et "douleur thoracique" sont traites pareil.
+    text = original_text.lower()
 
-    # Valeur risk_level
-    if data["risk_level"] not in VALID_RISK_LEVELS:
-        return None, f"Niveau de risque invalide : {data['risk_level']}"
-
-    # Confiance
-    try:
-        data["confidence"] = float(data["confidence"])
-        data["confidence"] = max(0.0, min(1.0, data["confidence"]))
-    except (ValueError, TypeError):
-        return None, "Score de confiance invalide"
-
-    # Override : mots critiques
-    symptoms_lower = original_symptoms.lower()
-    for keyword in CRITICAL_KEYWORDS:
-        if keyword in symptoms_lower:
-            data["risk_level"] = "high"
-            data["confidence"] = max(data["confidence"], 0.8)
+    # Regle 1 : mot critique 
+    for word in CRITICAL_KEYWORDS:
+        if word in text:
+            data["risk_level"] = "high" #On FORCE le niveau de risque a "high
+            data["confidence"] = max(0.8, float(data["confidence"]))#➤ On met la confiance a minimum 80%. 
             break
 
-    # Flag confiance faible
-    data["low_confidence"] = data["confidence"] < CONFIDENCE_THRESHOLD
+    # Regle 2 : combinaison de symptomes 
+    data["critical_alert"] = None
+    for combo, raison in CRITICAL_COMBOS:
+        if all(mot in text for mot in combo):
+            data["risk_level"] = "high"
+            data["critical_alert"] = raison #On stocke la raison medicale pour l'afficher a l'ecran.
+            break
+
+    # les Champs optionnels 
+    if "chronologie" not in data:
+        data["chronologie"] = ""
+    if "medicaments" not in data:
+        data["medicaments"] = []
+    if "signes_alerte" not in data:
+        data["signes_alerte"] = []
 
     return data, None
