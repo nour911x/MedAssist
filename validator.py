@@ -26,7 +26,7 @@ def validate_response(raw_json, original_text):
         return None, "Erreur JSON" #Si json.loads echoue, on attrape l'exception et on retourne une erreur propre 
 
     # Verification champs obligatoires
-    required = ["symptoms", "risk_level", "confidence", "explanation", "specialty"]
+    required = ["symptoms", "risk_level", "explanation", "specialty"]
     for field in required:
         if field not in data:
             return None, f"Champ manquant: {field}"
@@ -39,8 +39,7 @@ def validate_response(raw_json, original_text):
     # Regle 1 : mot critique 
     for word in CRITICAL_KEYWORDS:
         if word in text:
-            data["risk_level"] = "high" #On FORCE le niveau de risque a "high
-            data["confidence"] = max(0.8, float(data["confidence"]))#➤ On met la confiance a minimum 80%. 
+            data["risk_level"] = "high"
             break
 
     # Regle 2 : combinaison de symptomes 
@@ -51,12 +50,22 @@ def validate_response(raw_json, original_text):
             data["critical_alert"] = raison #On stocke la raison medicale pour l'afficher a l'ecran.
             break
 
-    # les Champs optionnels 
-    if "chronologie" not in data:
-        data["chronologie"] = ""
+    # Regle 3 : double verification via le LLM
+    # Si le LLM a detecte une urgence que les keywords n'ont pas catchee
+    if data.get("urgent") is True and data["risk_level"] != "high":
+        data["risk_level"] = "high"
+
+    # les Champs optionnels
     if "medicaments" not in data:
         data["medicaments"] = []
     if "signes_alerte" not in data:
         data["signes_alerte"] = []
+    if "conseils" not in data:
+        data["conseils"] = []
+
+    # Nettoyage des listes : virer les elements parasites (lettres seules, fragments)
+    for key in ["symptoms", "signes_alerte", "conseils", "medicaments"]:
+        if key in data and isinstance(data[key], list):
+            data[key] = [item.strip() for item in data[key] if isinstance(item, str) and len(item.strip()) > 3]
 
     return data, None

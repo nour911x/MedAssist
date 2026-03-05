@@ -26,13 +26,13 @@ def generate_pdf(result): #Fonction principale. Prend le resultat de l'analyse e
 
     # Bandeau de risque colore
     colors = {"low": (46, 204, 113), "medium": (243, 156, 18), "high": (231, 76, 60)}
-    labels = {"low": "Surveillance a domicile", "medium": "Consultation recommandee", "high": "Urgence medicale"}
+    labels = {"low": "Risque faible", "medium": "Consultation recommandee", "high": "Urgence medicale"}
 
     r, g, b = colors.get(result["risk_level"], (0, 0, 0))
     pdf.set_fill_color(r, g, b)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 12, f"  {labels[result['risk_level']]} (confiance : {result['confidence']:.0%})", ln=True, fill=True)
+    pdf.cell(0, 12, f"  {labels[result['risk_level']]}", ln=True, fill=True)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(6)
 
@@ -45,15 +45,7 @@ def generate_pdf(result): #Fonction principale. Prend le resultat de l'analyse e
         pdf.cell(0, 6, _safe(f"- {s}"), ln=True)
     pdf.ln(4)
 
-    #  Chronologie 
-    if result.get("chronologie"):
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 8, "Chronologie", ln=True)
-        pdf.set_font("Helvetica", "", 10)
-        pdf.multi_cell(0, 6, _safe(result["chronologie"]))
-        pdf.ln(4)
-
-    #  Medicaments pris 
+    #  Medicaments pris
     if result.get("medicaments"):
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(0, 8, "Medicaments pris / en cours", ln=True)
