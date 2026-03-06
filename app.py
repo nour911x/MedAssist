@@ -11,7 +11,7 @@ st.set_page_config(page_title="MedAssist", page_icon="🏥", layout="centered")
 
 MAX_QUESTIONS = 3
 
-# ---------------- Style custom ----------------
+
 ACCENT = "#2a7886"
 ACCENT_LIGHT = "#e6f2f4"
 
@@ -139,12 +139,12 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- Header ----------------
+
 st.markdown('<p class="main-title">MedAssist</p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Orientation medicale intelligente</p>', unsafe_allow_html=True)
 st.markdown('<div class="disclaimer">Cet outil ne remplace pas un avis medical. En cas d\'urgence, appelez le 15 (SAMU).</div>', unsafe_allow_html=True)
 
-# ---------------- Sidebar ----------------
+
 with st.sidebar:
     if st.button("Nouvelle consultation", use_container_width=True):
         st.session_state.messages = []
@@ -172,25 +172,22 @@ with st.sidebar:
     else:
         st.caption("Aucun historique")
 
-# ---------------- Session state ----------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.result = None
     st.session_state.user_count = 0
 
-# ---------------- Chat ----------------
 
-# Message de bienvenue
+
 if not st.session_state.messages and st.session_state.result is None:
     with st.chat_message("assistant"):
         st.write("Bonjour ! Decrivez vos symptomes, je vais vous poser quelques questions puis vous donner mon analyse.")
 
-# Afficher l'historique du chat
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# Input utilisateur (cache quand le resultat est affiche)
 if st.session_state.result is None:
     user_input = st.chat_input("Decrivez vos symptomes...")
 else:
@@ -204,7 +201,6 @@ if user_input and st.session_state.result is None:
 
     api_messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
 
-    # Phase 1 : Poser des questions
     if st.session_state.user_count < MAX_QUESTIONS:
         with st.spinner("MedAssist reflechit..."):
             response = ask_questions(api_messages)
@@ -213,7 +209,6 @@ if user_input and st.session_state.result is None:
             st.write(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-    # Phase 2 : Analyse finale
     else:
         with st.spinner("Analyse en cours..."):
             raw_json = analyze(api_messages)
@@ -227,23 +222,19 @@ if user_input and st.session_state.result is None:
             save_consultation(result)
             st.rerun()
 
-# ---------------- Resultats ----------------
 if st.session_state.result:
     r = st.session_state.result
 
     st.divider()
 
-    # Alerte critique
     if r.get("critical_alert"):
         st.error(f"Alerte critique : {r['critical_alert']}")
 
-    # Bandeau de risque
     risk_css = {"low": "risk-low", "medium": "risk-medium", "high": "risk-high"}
     risk_texts = {"low": "Risque faible", "medium": "Consultation recommandee", "high": "Urgence medicale"}
     risk_class = risk_css[r["risk_level"]]
     st.markdown(f'<div class="risk-banner {risk_class}">{risk_texts[r["risk_level"]]}</div>', unsafe_allow_html=True)
 
-    # Specialite + Symptomes cote a cote
     col_spec, col_symp = st.columns(2)
     with col_spec:
         st.markdown(f'<div class="section-card"><div class="section-title">Specialite recommandee</div><div class="section-content">{html.escape(r["specialty"])}</div></div>', unsafe_allow_html=True)
@@ -251,25 +242,20 @@ if st.session_state.result:
         symptoms_html = "".join(f"<li>{html.escape(s)}</li>" for s in r["symptoms"])
         st.markdown(f'<div class="section-card"><div class="section-title">Symptomes detectes</div><div class="section-content"><ul>{symptoms_html}</ul></div></div>', unsafe_allow_html=True)
 
-    # Explication
     st.markdown(f'<div class="section-card"><div class="section-title">Explication</div><div class="section-content">{html.escape(r["explanation"])}</div></div>', unsafe_allow_html=True)
 
-    # Conseils pratiques
     if r.get("conseils"):
         conseils_html = "".join(f"<li>{html.escape(c)}</li>" for c in r["conseils"])
         st.markdown(f'<div class="section-card"><div class="section-title">Conseils pratiques</div><div class="section-content"><ul>{conseils_html}</ul></div></div>', unsafe_allow_html=True)
 
-    # Medicaments mentionnes
     if r.get("medicaments"):
         meds_html = "".join(f"<li>{html.escape(m)}</li>" for m in r["medicaments"])
         st.markdown(f'<div class="section-card"><div class="section-title">Medicaments mentionnes</div><div class="section-content"><ul>{meds_html}</ul></div></div>', unsafe_allow_html=True)
 
-    # Signes d'alerte apres les conseils
     if r.get("signes_alerte"):
         alertes_html = "".join(f"<li>{html.escape(s)}</li>" for s in r["signes_alerte"])
         st.markdown(f'<div class="section-card"><div class="section-title">Signes d\'alerte a surveiller</div><div class="section-content"><ul>{alertes_html}</ul></div></div>', unsafe_allow_html=True)
 
-    # Message urgence si medium ou high
     if r["risk_level"] in ["medium", "high"]:
         st.divider()
         st.markdown('<div class="urgence-label">Message d\'urgence</div>', unsafe_allow_html=True)
@@ -280,7 +266,6 @@ if st.session_state.result:
             wa_url = f"https://wa.me/{phone}?text={urllib.parse.quote(msg)}"
             st.link_button("Envoyer via WhatsApp", wa_url)
 
-    # Export PDF
     st.divider()
     pdf_path = generate_pdf(r)
     with open(pdf_path, "rb") as f:
@@ -291,7 +276,6 @@ if st.session_state.result:
             "application/pdf"
         )
 
-    # Aggravation tout en bas
     aggravation = check_aggravation(r["symptoms"])
     if aggravation:
         st.caption(f"Symptomes similaires detectes le {aggravation['date']} (risque precedent : {aggravation['previous_risk']})")
